@@ -84,7 +84,7 @@ func GetNestedValue(obj map[string]interface{}, key string) (interface{}, error)
 Run unit tests:
 
 ```bash
-go test ./cmd/nested -v
+go test -v ./...
 ```
 
 Sample tests include:
