@@ -8,7 +8,7 @@ This repository contains Terraform code to provision a complete AWS infrastructu
 
 ```mermaid
 flowchart TB
-  subgraph "AWS Region (\" + var.aws_region + \"")"
+  subgraph "AWS Region (us-east-1)"
     subgraph "VPC [10.0.0.0/16]"
       IGW[Internet Gateway]
       RT[Public Route Table]
