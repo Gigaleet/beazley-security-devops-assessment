@@ -38,6 +38,16 @@ func (c *MetadataClient) fetch(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	// Treat 404 as “key not found”
+	if resp.StatusCode == http.StatusNotFound {
+	    return nil, fmt.Errorf("key %q not found", path)
+	}
+	// Any other non-2xx is an error
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	    return nil, fmt.Errorf("unexpected HTTP status: %d", resp.StatusCode)
+	}
+
 	return io.ReadAll(resp.Body)
 }
 

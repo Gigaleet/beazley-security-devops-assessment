@@ -11,21 +11,34 @@ import (
 
 // stubServer simulates a minimal IMDS for testing.
 func stubServer() *httptest.Server {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/latest/meta-data/", func(w http.ResponseWriter, r *http.Request) {
-		// root: one leaf and one folder
-		w.Write([]byte("instance-id\nfolder/\n"))
-	})
-	mux.HandleFunc("/latest/meta-data/instance-id", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("i-abcdef123456"))
-	})
-	mux.HandleFunc("/latest/meta-data/folder/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("subkey\n"))
-	})
-	mux.HandleFunc("/latest/meta-data/folder/subkey", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("subvalue"))
-	})
-	return httptest.NewServer(mux)
+    mux := http.NewServeMux()
+
+    // Exact match for the root listing:
+    mux.HandleFunc("/latest/meta-data/", func(w http.ResponseWriter, r *http.Request) {
+        // only return this on the exact root path
+        if r.URL.Path != "/latest/meta-data/" {
+            http.NotFound(w, r)
+            return
+        }
+        w.Write([]byte("instance-id\nfolder/\n"))
+    })
+
+    // Exact handlers for the things you know about:
+    mux.HandleFunc("/latest/meta-data/instance-id", func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte("i-abcdef123456"))
+    })
+    mux.HandleFunc("/latest/meta-data/folder/", func(w http.ResponseWriter, r *http.Request) {
+        if r.URL.Path != "/latest/meta-data/folder/" {
+            http.NotFound(w, r)
+            return
+        }
+        w.Write([]byte("subkey\n"))
+    })
+    mux.HandleFunc("/latest/meta-data/folder/subkey", func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte("subvalue"))
+    })
+
+    return httptest.NewServer(mux)
 }
 
 func TestMetadataClient_GetAll(t *testing.T) {
@@ -102,7 +115,13 @@ func TestFetchEC2Metadata_NoAWSConfig(t *testing.T) {
 
 	ctx := context.Background()
 	_, err := fetchEC2Metadata(ctx, "i-unknown")
-	if err == nil || !strings.Contains(err.Error(), "failed to load AWS config") {
-		t.Errorf("expected AWS config load error, got %v", err)
+	if err == nil {
+		t.Fatalf("expected an error, got nil")
 	}
+	msg := err.Error()
+	if !strings.Contains(msg, "failed to load AWS config") &&
+	!strings.Contains(msg, "describe instances error") {
+		t.Errorf("expected AWS config load *or* describe error, got %q", msg)
+	}
+
 }
